@@ -1,5 +1,4 @@
 name: Build Portable Binaries
-
 on:
   workflow_dispatch:
 
@@ -10,11 +9,25 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
+      # 1. 先检出自己的仓库（含 CMakePresets.json）
+      - uses: actions/checkout@v4
+
+      # 2. 再拉 HiGHS 源码到临时目录
       - uses: actions/checkout@v4
         with:
           repository: ERGO-Code/HiGHS
           ref: v1.7.0
+          path: highs-tmp
 
+      # 3. 把 HiGHS 文件挪到根目录（保留自己的 CMakePresets.json）
+      - name: Move HiGHS source
+        shell: bash
+        run: |
+          shopt -s dotglob
+          mv highs-tmp/* .
+          rm -rf highs-tmp
+
+      # 4. 编译 & 打包
       - name: Configure & Build
         run: |
           cmake --preset static-${{ runner.os == 'Windows' && 'win' || runner.os == 'macOS' && 'macos' || 'linux' }}
@@ -25,7 +38,7 @@ jobs:
         run: |
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             strip build-static-win/bin/highs.exe
-            upx -9 build-static-win/bin/highs.exe
+            upx -9 build-static-win/bin/highs.exe || true
             7z a highs-portable-win64.zip build-static-win/bin/highs.exe
             echo "ART=highs-portable-win64.zip" >> $GITHUB_ENV
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
@@ -34,7 +47,7 @@ jobs:
             echo "ART=highs-portable-macos-universal.tar.gz" >> $GITHUB_ENV
           else
             strip -s build-static-linux/bin/highs
-            upx -9 build-static-linux/bin/highs
+            upx -9 build-static-linux/bin/highs || true
             tar -czf highs-portable-linux-x86_64.tar.gz -C build-static-linux/bin highs
             echo "ART=highs-portable-linux-x86_64.tar.gz" >> $GITHUB_ENV
           fi
