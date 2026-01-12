@@ -47,7 +47,7 @@ jobs:
             tar -czf highs-portable-macos-universal.tar.gz -C $(dirname "$BIN") $(basename "$BIN")
             echo "ART=highs-portable-macos-universal.tar.gz" >> $GITHUB_ENV
 
-          else
+          else  # Linux
             BIN=$(find build-static-linux -name highs)
             clang++ -static -s -o highs-static "$BIN" build-static-linux/lib/libhighs.a -lm -lpthread
             strip -s highs-static
@@ -58,5 +58,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ART }}
-          path: ${{ env.ART }}
+          name: ${{ env.ART }}"
+          path: ${{ env.ART }}"
