@@ -3,11 +3,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  linux:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -15,48 +12,67 @@ jobs:
           repository: ERGO-Code/HiGHS
           ref: v1.7.0
           path: highs-tmp
-
-      - name: Move HiGHS source (skip .git/.github)
-        shell: bash
+      - name: Move HiGHS source
         run: |
-          for item in highs-tmp/* highs-tmp/.[!.]* highs-tmp/..?*; do
-            [[ -e "$item" ]] || continue
-            case $(basename "$item") in .git|.github) continue;; esac
-            mv "$item" .
-          done
-          rm -rf highs-tmp
-
-      - name: Configure & Build
+          rsync -a --exclude=.git --exclude=.github highs-tmp/ . && rm -rf highs-tmp
+      - name: Build
         run: |
-          cmake --preset static-${{ runner.os == 'Windows' && 'win' || runner.os == 'macOS' && 'macos' || 'linux' }}
-          cmake --build --preset ${{ runner.os == 'Windows' && 'win' || runner.os == 'macOS' && 'macos' || 'linux' }}
-
-      - name: Strip & pack
-        shell: bash
-        run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            BIN=$(find build-static-win -name highs.exe)
-            strip "$BIN"
-            upx -9 "$BIN" || true
-            7z a highs-portable-win64.zip "$BIN"
-            echo "ART=highs-portable-win64.zip" >> $GITHUB_ENV
-
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            BIN=$(find build-static-macos -name highs)
-            strip "$BIN"
-            tar -czf highs-portable-macos-universal.tar.gz -C "$(dirname "$BIN")" "$(basename "$BIN")"
-            echo "ART=highs-portable-macos-universal.tar.gz" >> $GITHUB_ENV
-
-          else  # Linux
-            BIN=$(find build-static-linux -name highs)
-            clang++ -static -s -o highs-static "$BIN" build-static-linux/lib/libhighs.a -lm -lpthread
-            strip -s highs-static
-            upx -9 highs-static || true
-            tar -czf highs-portable-linux-x86_64.tar.gz highs-static
-            echo "ART=highs-portable-linux-x86_64.tar.gz" >> $GITHUB_ENV
-          fi
-
+          cmake --preset static-linux && cmake --build --preset linux
+          BIN=$(find build-static-linux -name highs)
+          clang++ -static -s -o highs-static "$BIN" build-static-linux/lib/libhighs.a -lm -lpthread
+          strip -s highs-static && upx -9 highs-static || true
+          tar -czf highs-portable-linux-x86_64.tar.gz highs-static
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ART }}
-          path: ${{ env.ART }}
+          name: highs-portable-linux-x86_64.tar.gz
+          path: highs-portable-linux-x86_64.tar.gz
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ERGO-Code/HiGHS
+          ref: v1.7.0
+          path: highs-tmp
+      - name: Move HiGHS source
+        shell: bash
+        run: |
+          shopt -s dotglob
+          for item in highs-tmp/*; do [[ -d "$item" ]] && [[ ! "$item" =~ .git ]] && mv "$item" .; done
+          rm -rf highs-tmp
+      - name: Build
+        shell: bash
+        run: |
+          cmake --preset static-win && cmake --build --preset win
+          BIN=$(find build-static-win -name highs.exe)
+          strip "$BIN" && upx -9 "$BIN" || true
+          7z a highs-portable-win64.zip "$BIN"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: highs-portable-win64.zip
+          path: highs-portable-win64.zip
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ERGO-Code/HiGHS
+          ref: v1.7.0
+          path: highs-tmp
+      - name: Move HiGHS source
+        run: |
+          rsync -a --exclude=.git --exclude=.github highs-tmp/ . && rm -rf highs-tmp
+      - name: Build
+        run: |
+          cmake --preset static-macos && cmake --build --preset macos
+          BIN=$(find build-static-macos -name highs)
+          strip "$BIN"
+          tar -czf highs-portable-macos-universal.tar.gz -C "$(dirname "$BIN")" "$(basename "$BIN")"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: highs-portable-macos-universal.tar.gz
+          path: highs-portable-macos-universal.tar.gz
