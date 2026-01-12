@@ -34,21 +34,29 @@ jobs:
       - name: Static link & strip **only** highs binary
         shell: bash
         run: |
-          # 找到主可执行文件
-          BIN=$(find build-static-* -name highs -o -name highs.exe | head -n1)
-          # 重新手动静态链接（示例保持动态）
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            gcc -static -s -o highs-static.exe $BIN lib/libhighs.a -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+            gcc -static -s -o highs-static.exe \
+              build-static-win/bin/highs \
+              build-static-win/lib/libhighs.a \
+              -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
             strip highs-static.exe && upx -9 highs-static.exe || true
             7z a highs-portable-win64.zip highs-static.exe
             echo "ART=highs-portable-win64.zip" >> $GITHUB_ENV
+
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            clang++ -O3 -s -o highs-static $BIN lib/libhighs.a -framework CoreFoundation
+            clang++ -static -s -o highs-static \
+              build-static-macos/bin/highs \
+              build-static-macos/lib/libhighs.a \
+              -lm -lpthread
             strip highs-static
             tar -czf highs-portable-macos-universal.tar.gz highs-static
             echo "ART=highs-portable-macos-universal.tar.gz" >> $GITHUB_ENV
+
           else
-            clang++ -static -s -o highs-static $BIN lib/libhighs.a -lm -lpthread
+            clang++ -static -s -o highs-static \
+              build-static-linux/bin/highs \
+              build-static-linux/lib/libhighs.a \
+              -lm -lpthread
             strip -s highs-static
             upx -9 highs-static || true
             tar -czf highs-portable-linux-x86_64.tar.gz highs-static
