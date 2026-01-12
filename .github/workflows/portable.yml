@@ -9,17 +9,13 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      # 1. 检出自己的仓库（含 CMakePresets.json）
       - uses: actions/checkout@v4
-
-      # 2. 拉 HiGHS 源码到临时目录
       - uses: actions/checkout@v4
         with:
           repository: ERGO-Code/HiGHS
           ref: v1.7.0
           path: highs-tmp
 
-      # 3. 移动 HiGHS 文件，跳过 .git/.github
       - name: Move HiGHS source (skip .git/.github)
         shell: bash
         run: |
@@ -30,28 +26,32 @@ jobs:
           done
           rm -rf highs-tmp
 
-      # 4. 编译 & 打包
       - name: Configure & Build
         run: |
           cmake --preset static-${{ runner.os == 'Windows' && 'win' || runner.os == 'macOS' && 'macos' || 'linux' }}
           cmake --build --preset ${{ runner.os == 'Windows' && 'win' || runner.os == 'macOS' && 'macos' || 'linux' }}
 
-      - name: Strip & Pack
+      - name: Static link & strip **only** highs binary
         shell: bash
         run: |
+          # 找到主可执行文件
+          BIN=$(find build-static-* -name highs -o -name highs.exe | head -n1)
+          # 重新手动静态链接（示例保持动态）
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            strip build-static-win/bin/highs.exe
-            upx -9 build-static-win/bin/highs.exe || true
-            7z a highs-portable-win64.zip build-static-win/bin/highs.exe
+            gcc -static -s -o highs-static.exe $BIN lib/libhighs.a -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+            strip highs-static.exe && upx -9 highs-static.exe || true
+            7z a highs-portable-win64.zip highs-static.exe
             echo "ART=highs-portable-win64.zip" >> $GITHUB_ENV
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            strip build-static-macos/bin/highs
-            tar -czf highs-portable-macos-universal.tar.gz -C build-static-macos/bin highs
+            clang++ -O3 -s -o highs-static $BIN lib/libhighs.a -framework CoreFoundation
+            strip highs-static
+            tar -czf highs-portable-macos-universal.tar.gz highs-static
             echo "ART=highs-portable-macos-universal.tar.gz" >> $GITHUB_ENV
           else
-            strip -s build-static-linux/bin/highs
-            upx -9 build-static-linux/bin/highs || true
-            tar -czf highs-portable-linux-x86_64.tar.gz -C build-static-linux/bin highs
+            clang++ -static -s -o highs-static $BIN lib/libhighs.a -lm -lpthread
+            strip -s highs-static
+            upx -9 highs-static || true
+            tar -czf highs-portable-linux-x86_64.tar.gz highs-static
             echo "ART=highs-portable-linux-x86_64.tar.gz" >> $GITHUB_ENV
           fi
 
