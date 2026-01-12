@@ -19,9 +19,8 @@ jobs:
         run: |
           cmake --preset static-linux && cmake --build --preset linux
           BIN=$(find build-static-linux -name highs)
-          clang++ -static -s -o highs-static "$BIN" build-static-linux/lib/libhighs.a -lm -lpthread
-          strip -s highs-static && upx -9 highs-static || true
-          tar -czf highs-portable-linux-x86_64.tar.gz highs-static
+          strip -s "$BIN" && upx -9 "$BIN" || true
+          tar -czf highs-portable-linux-x86_64.tar.gz -C "$(dirname "$BIN")" "$(basename "$BIN")"
       - uses: actions/upload-artifact@v4
         with:
           name: highs-portable-linux-x86_64.tar.gz
@@ -40,12 +39,17 @@ jobs:
         shell: bash
         run: |
           shopt -s dotglob
-          for item in highs-tmp/*; do [[ -d "$item" ]] && [[ ! "$item" =~ .git ]] && mv "$item" .; done
+          for f in highs-tmp/*; do
+            [[ -d "$f" ]] && [[ ! "$f" =~ .git ]] && cp -r "$f" . || true
+          done
           rm -rf highs-tmp
       - name: Build
         shell: bash
         run: |
           cmake --preset static-win && cmake --build --preset win
+      - name: Pack
+        shell: bash
+        run: |
           BIN=$(find build-static-win -name highs.exe)
           strip "$BIN" && upx -9 "$BIN" || true
           7z a highs-portable-win64.zip "$BIN"
