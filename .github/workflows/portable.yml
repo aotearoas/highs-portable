@@ -9,22 +9,25 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      # 1. 先检出自己的仓库（含 CMakePresets.json）
+      # 1. 检出自己的仓库（含 CMakePresets.json）
       - uses: actions/checkout@v4
 
-      # 2. 再拉 HiGHS 源码到临时目录
+      # 2. 拉 HiGHS 源码到临时目录
       - uses: actions/checkout@v4
         with:
           repository: ERGO-Code/HiGHS
           ref: v1.7.0
           path: highs-tmp
 
-      # 3. 把 HiGHS 文件挪到根目录（保留自己的 CMakePresets.json）
-      - name: Move HiGHS source
+      # 3. 移动 HiGHS 文件，跳过 .git/.github
+      - name: Move HiGHS source (skip .git/.github)
         shell: bash
         run: |
-          shopt -s dotglob
-          mv highs-tmp/* .
+          for item in highs-tmp/* highs-tmp/.[!.]* highs-tmp/..?*; do
+            [[ -e "$item" ]] || continue
+            case $(basename "$item") in .git|.github) continue;; esac
+            mv "$item" .
+          done
           rm -rf highs-tmp
 
       # 4. 编译 & 打包
