@@ -1,0 +1,47 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "static-win",
+      "displayName": "Windows static MT",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-static-win",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_SHARED_LIBS": "OFF",
+        "HIGHS_STATIC": "ON",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded",
+        "CMAKE_EXE_LINKER_FLAGS": "/INCREMENTAL:NO /NODEFAULTLIB:msvcrt.lib"
+      }
+    },
+    {
+      "name": "static-linux",
+      "displayName": "Linux musl static",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-static-linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_SHARED_LIBS": "OFF",
+        "HIGHS_STATIC": "ON",
+        "CMAKE_EXE_LINKER_FLAGS": "-static -s"
+      }
+    },
+    {
+      "name": "static-macos",
+      "displayName": "macOS release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-static-macos",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_SHARED_LIBS": "OFF",
+        "HIGHS_STATIC": "ON",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "10.15"
+      }
+    }
+  ],
+  "buildPresets": [
+    {"name": "win",   "configurePreset": "static-win"},
+    {"name": "linux", "configurePreset": "static-linux"},
+    {"name": "macos", "configurePreset": "static-macos"}
+  ]
+}
