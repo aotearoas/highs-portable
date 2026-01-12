@@ -31,32 +31,25 @@ jobs:
           cmake --preset static-${{ runner.os == 'Windows' && 'win' || runner.os == 'macOS' && 'macos' || 'linux' }}
           cmake --build --preset ${{ runner.os == 'Windows' && 'win' || runner.os == 'macOS' && 'macos' || 'linux' }}
 
-      - name: Static link & strip **only** highs binary
+      - name: Strip & pack
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            gcc -static -s -o highs-static.exe \
-              build-static-win/bin/highs \
-              build-static-win/lib/libhighs.a \
-              -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
-            strip highs-static.exe && upx -9 highs-static.exe || true
-            7z a highs-portable-win64.zip highs-static.exe
+            BIN=$(find build-static-win -name highs.exe)
+            strip "$BIN"
+            upx -9 "$BIN" || true
+            7z a highs-portable-win64.zip "$BIN"
             echo "ART=highs-portable-win64.zip" >> $GITHUB_ENV
 
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            clang++ -static -s -o highs-static \
-              build-static-macos/bin/highs \
-              build-static-macos/lib/libhighs.a \
-              -lm -lpthread
-            strip highs-static
-            tar -czf highs-portable-macos-universal.tar.gz highs-static
+            BIN=$(find build-static-macos -name highs)
+            strip "$BIN"
+            tar -czf highs-portable-macos-universal.tar.gz -C $(dirname "$BIN") $(basename "$BIN")
             echo "ART=highs-portable-macos-universal.tar.gz" >> $GITHUB_ENV
 
           else
-            clang++ -static -s -o highs-static \
-              build-static-linux/bin/highs \
-              build-static-linux/lib/libhighs.a \
-              -lm -lpthread
+            BIN=$(find build-static-linux -name highs)
+            clang++ -static -s -o highs-static "$BIN" build-static-linux/lib/libhighs.a -lm -lpthread
             strip -s highs-static
             upx -9 highs-static || true
             tar -czf highs-portable-linux-x86_64.tar.gz highs-static
