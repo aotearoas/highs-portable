@@ -44,7 +44,7 @@ jobs:
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             BIN=$(find build-static-macos -name highs)
             strip "$BIN"
-            tar -czf highs-portable-macos-universal.tar.gz -C $(dirname "$BIN") $(basename "$BIN")
+            tar -czf highs-portable-macos-universal.tar.gz -C "$(dirname "$BIN")" "$(basename "$BIN")"
             echo "ART=highs-portable-macos-universal.tar.gz" >> $GITHUB_ENV
 
           else  # Linux
@@ -59,4 +59,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ART }}
-          path: ${{ env.ART }}"
+          path: ${{ env.ART }}
