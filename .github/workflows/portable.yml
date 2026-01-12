@@ -1,3 +1,31 @@
+name: Build Portable Binaries
+on:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ERGO-Code/HiGHS
+          ref: v1.7.0
+          path: highs-tmp
+      - name: Move HiGHS source
+        run: |
+          rsync -a --exclude=.git --exclude=.github highs-tmp/ . && rm -rf highs-tmp
+      - name: Build
+        run: |
+          cmake --preset static-linux && cmake --build --preset linux
+          BIN=$(find build-static-linux -name highs)
+          strip -s "$BIN" && upx -9 "$BIN" || true
+          tar -czf highs-portable-linux-x86_64.tar.gz -C "$(dirname "$BIN")" "$(basename "$BIN")"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: highs-portable-linux-x86_64.tar.gz
+          path: highs-portable-linux-x86_64.tar.gz
+
   windows:
     runs-on: windows-latest
     steps:
@@ -27,3 +55,26 @@
         with:
           name: highs-portable-win64.zip
           path: highs-portable-win64.zip
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ERGO-Code/HiGHS
+          ref: v1.7.0
+          path: highs-tmp
+      - name: Move HiGHS source
+        run: |
+          rsync -a --exclude=.git --exclude=.github highs-tmp/ . && rm -rf highs-tmp
+      - name: Build
+        run: |
+          cmake --preset static-macos && cmake --build --preset macos
+          BIN=$(find build-static-macos -name highs)
+          strip "$BIN"
+          tar -czf highs-portable-macos-universal.tar.gz -C "$(dirname "$BIN")" "$(basename "$BIN")"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: highs-portable-macos-universal.tar.gz
+          path: highs-portable-macos-universal.tar.gz
