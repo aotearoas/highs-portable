@@ -36,13 +36,10 @@ jobs:
           ref: v1.7.0
           path: highs-tmp
       - name: Move HiGHS source
-        shell: bash
+        shell: cmd
         run: |
-          shopt -s dotglob
-          for f in highs-tmp/*; do
-            [[ -d "$f" ]] && [[ ! "$f" =~ .git ]] && cp -r "$f" . || true
-          done
-          rm -rf highs-tmp
+          robocopy highs-tmp\ . /E /XD .git .github
+          rmdir /s /q highs-tmp
       - name: Build
         shell: bash
         run: |
