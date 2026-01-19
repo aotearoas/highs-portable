@@ -41,24 +41,29 @@ jobs:
           robocopy highs-tmp\ . /E /XD .git .github
           rmdir /s /q highs-tmp
           exit 0
-      - name: Configure
-        shell: bash
+
+      # ① 用官方 MSVC + /MT 静态运行时
+      - name: Configure & Build
+        shell: cmd
         run: |
-          cmake -B build-static-win -S . \
-            -G "Unix Makefiles" \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DHIGHS_STATIC=ON \
-            -DCMAKE_EXE_LINKER_FLAGS="-static -s" \
-            -DCMAKE_C_COMPILER=gcc \
-            -DCMAKE_CXX_COMPILER=g++
-          cmake --build build-static-win --target highs-bin
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          cmake -B build-static-win -S . ^
+            -G "Visual Studio 17 2022" ^
+            -A x64 ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DBUILD_SHARED_LIBS=OFF ^
+            -DHIGHS_STATIC=ON ^
+            -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded"
+          cmake --build build-static-win --config Release --target highs-bin
+
+      # ② 只 strip，不 UPX（避免入口破坏）
       - name: Pack
-        shell: bash
+        shell: cmd
         run: |
-          BIN=build-static-win/bin/highs.exe
-          strip "$BIN"   # 只 strip，不 UPX
-          7z a highs-portable-win64.zip "$BIN"
+          set BIN=build-static-win\bin\Release\highs.exe
+          strip "%BIN%"
+          7z a highs-portable-win64.zip "%BIN%"
+
       - uses: actions/upload-artifact@v4
         with:
           name: highs-portable-win64.zip
