@@ -41,8 +41,6 @@ jobs:
           robocopy highs-tmp\ . /E /XD .git .github
           rmdir /s /q highs-tmp
           exit 0
-
-      # ① 配置：强制静态工具链，把 libstdc++、libgcc 全部焊进 exe
       - name: Configure
         shell: bash
         run: |
@@ -54,20 +52,13 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-static -s" \
             -DCMAKE_C_COMPILER=gcc \
             -DCMAKE_CXX_COMPILER=g++
-      # ② 只编译 highs-bin 目标，避免示例/测试拖库
-      - name: Build
-        shell: bash
-        run: |
           cmake --build build-static-win --target highs-bin
-
-      # ③  strip + UPX 压缩，体积 1.7 MB
       - name: Pack
         shell: bash
         run: |
           BIN=build-static-win/bin/highs.exe
-          strip "$BIN" && upx -9 "$BIN" || true
+          strip "$BIN"   # 只 strip，不 UPX
           7z a highs-portable-win64.zip "$BIN"
-
       - uses: actions/upload-artifact@v4
         with:
           name: highs-portable-win64.zip
