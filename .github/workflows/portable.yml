@@ -42,7 +42,6 @@ jobs:
           rmdir /s /q highs-tmp
           exit 0
 
-      # ① 用官方 MSVC + /MT 静态运行时
       - name: Configure & Build
         shell: cmd
         run: |
@@ -56,11 +55,12 @@ jobs:
             -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded"
           cmake --build build-static-win --config Release --target highs-bin
 
-      # ② 只 strip，不 UPX（避免入口破坏）
       - name: Pack
         shell: cmd
         run: |
-          set BIN=build-static-win\bin\Release\highs.exe
+          for /f "delims=" %%i in ('dir /s /b build-static-win\*.exe 2^>nul ^| findstr /i "highs"') do set "BIN=%%i"
+          if not defined BIN (echo "highs*.exe not found" && exit 1)
+          echo "Found: %BIN%"
           strip "%BIN%"
           7z a highs-portable-win64.zip "%BIN%"
 
